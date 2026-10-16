@@ -1,0 +1,22 @@
+name: Test cask
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Install and uninstall on Apple Silicon
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      # Checks this repository out as the ayushman-git/seqora tap and trusts it.
+      - name: Set up Homebrew with this tap
+        uses: Homebrew/actions/setup-homebrew@bc9c5b2478f4c3e20de6a5d286d35d6cc16df46d # main
+      - name: Test the cask
+        run: .github/scripts/test-cask.sh

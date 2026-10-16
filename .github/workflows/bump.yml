@@ -1,0 +1,87 @@
+name: Bump cask
+
+# Moves the cask to each new stable Seqora release. Every run reads the public
+# release feed, so runs that find nothing new exit after a few seconds. The
+# installed app updates itself, so a few hours' delay here only affects
+# people installing for the first time.
+
+on:
+  schedule:
+    - cron: '41 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to move to (defaults to the version on the release feed)
+        type: string
+        required: false
+      allow_downgrade:
+        description: Allow moving to an older version, for example after pulling a release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bump-cask
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Check the release feed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      submit: ${{ steps.plan.outputs.submit }}
+      version: ${{ steps.plan.outputs.version }}
+      sha256: ${{ steps.plan.outputs.sha256 }}
+    steps:
+      - name: Check out the tap
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Decide what to update and verify the DMG
+        id: plan
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          ALLOW_DOWNGRADE: ${{ inputs.allow_downgrade }}
+        run: .github/scripts/plan-bump.sh
+
+  bump:
+    name: Test and publish Seqora ${{ needs.plan.outputs.version }}
+    needs: plan
+    if: needs.plan.outputs.submit == 'true'
+    runs-on: macos-15
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Set up Homebrew with this tap
+        uses: Homebrew/actions/setup-homebrew@bc9c5b2478f4c3e20de6a5d286d35d6cc16df46d # main
+      - name: Update the cask
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          SHA256: ${{ needs.plan.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          sed -i '' -E \
+            -e "s/^  version \"[^\"]+\"$/  version \"$VERSION\"/" \
+            -e "s/^  sha256 \"[0-9a-f]{64}\"$/  sha256 \"$SHA256\"/" \
+            Casks/seqora.rb
+          grep -Fqx "  version \"$VERSION\"" Casks/seqora.rb
+          grep -Fqx "  sha256 \"$SHA256\"" Casks/seqora.rb
+          git diff
+      - name: Test the cask
+        run: .github/scripts/test-cask.sh
+      - name: Commit and push
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git commit --all --message "seqora $VERSION"
+          git push origin HEAD:main
+          echo "Published seqora $VERSION. Users get it with \`brew install ayushman-git/seqora/seqora\`." >> "$GITHUB_STEP_SUMMARY"
