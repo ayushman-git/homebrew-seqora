@@ -34,4 +34,6 @@ Add `--zap` to also delete Seqora's settings, saved connections and passwords, c
 - **Bump cask** runs every three hours. When the release feed has a newer stable version, it checks the DMG against the release's `SHA256SUMS.txt`, installs and uninstalls it on an Apple Silicon runner, and commits the new version.
 - **Test cask** runs the same checks on every push and pull request.
 
+GitHub disables scheduled workflows in a public repository after 60 days without activity. Each release's bump commit keeps the schedule on, but if Seqora goes 60 days without a release, **Bump cask** silently stops. After such a gap, check `gh workflow list -R ayushman-git/homebrew-seqora --all`; if **Bump cask** shows `disabled_inactivity`, run `gh workflow enable bump.yml -R ayushman-git/homebrew-seqora` and then `gh workflow run bump.yml -R ayushman-git/homebrew-seqora`.
+
 Report problems with the app at [seqora.dev](https://seqora.dev/), and problems with the cask in this repository's issues.
