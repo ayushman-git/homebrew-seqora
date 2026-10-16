@@ -15,7 +15,7 @@ on:
         type: string
         required: false
       allow_downgrade:
-        description: Allow moving to an older version, for example after pulling a release
+        description: Allow moving to an older version. The audit only passes once the release feed has been rolled back to it too.
         type: boolean
         default: false
 
