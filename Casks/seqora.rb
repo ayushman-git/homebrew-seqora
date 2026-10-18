@@ -1,6 +1,6 @@
 cask "seqora" do
-  version "0.3.1"
-  sha256 "41da3a9c4de96d2ce50000192fecf344be7a3bc6d85e6756f76bd25d19e95db3"
+  version "0.3.2"
+  sha256 "16a7e48c94c58de29e49c47208ab2e59d122f2d8cd15d1a53248e631d177f7f3"
 
   url "https://releases.seqora.dev/releases/#{version}/downloads/Seqora_#{version}_aarch64.dmg"
   name "Seqora"
