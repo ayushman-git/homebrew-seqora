@@ -35,6 +35,7 @@ jobs:
       submit: ${{ steps.plan.outputs.submit }}
       version: ${{ steps.plan.outputs.version }}
       sha256: ${{ steps.plan.outputs.sha256 }}
+      arch: ${{ steps.plan.outputs.arch }}
     steps:
       - name: Check out the tap
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -62,12 +63,24 @@ jobs:
         env:
           VERSION: ${{ needs.plan.outputs.version }}
           SHA256: ${{ needs.plan.outputs.sha256 }}
+          ARCH: ${{ needs.plan.outputs.arch }}
         run: |
           set -euo pipefail
           sed -i '' -E \
             -e "s/^  version \"[^\"]+\"$/  version \"$VERSION\"/" \
             -e "s/^  sha256 \"[0-9a-f]{64}\"$/  sha256 \"$SHA256\"/" \
             Casks/seqora.rb
+          if [[ "$ARCH" == universal ]]; then
+            # One DMG for Apple Silicon and Intel, which needs macOS 12 or later.
+            sed -i '' -E \
+              -e 's/_aarch64\.dmg"$/_universal.dmg"/' \
+              -e '/^  depends_on arch: :arm64$/d' \
+              -e 's/^  depends_on :macos$/  depends_on macos: :monterey/' \
+              Casks/seqora.rb
+            grep -Fq '_universal.dmg"' Casks/seqora.rb
+            grep -Fqx '  depends_on macos: :monterey' Casks/seqora.rb
+            ! grep -Fq 'depends_on arch:' Casks/seqora.rb
+          fi
           grep -Fqx "  version \"$VERSION\"" Casks/seqora.rb
           grep -Fqx "  sha256 \"$SHA256\"" Casks/seqora.rb
           git diff
