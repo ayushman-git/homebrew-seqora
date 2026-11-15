@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Decides whether the cask needs a new version, and checks that the DMG it
 # will point at is the one the release recorded in SHA256SUMS.txt.
-# Writes submit, version and sha256 to $GITHUB_OUTPUT.
+# Writes submit, version, sha256 and arch (universal or aarch64) to $GITHUB_OUTPUT.
 set -euo pipefail
 
 BASE_URL=https://releases.seqora.dev
@@ -31,11 +31,22 @@ if [[ "$newest" != "$version" && "${ALLOW_DOWNGRADE:-false}" != true ]]; then
   skip "$version is older than the cask's $current."
 fi
 
-dmg="Seqora_${version}_aarch64.dmg"
+# From the first universal release on, the Mac download is one DMG for Apple
+# Silicon and Intel; releases up to 0.6.1 shipped an Apple Silicon DMG only.
 release="$BASE_URL/releases/$version"
-expected=$(curl --fail --silent --show-error --location "$release/SHA256SUMS.txt" |
-  awk -v file="$dmg" '$2 == file || $2 == "*" file { print tolower($1) }')
-[[ "$expected" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::$release/SHA256SUMS.txt has no entry for $dmg."; exit 1; }
+sums=$(curl --fail --silent --show-error --location "$release/SHA256SUMS.txt")
+checksum() {
+  awk -v file="$1" '$2 == file || $2 == "*" file { print tolower($1) }' <<< "$sums"
+}
+arch=universal
+dmg="Seqora_${version}_${arch}.dmg"
+expected=$(checksum "$dmg")
+if [[ -z "$expected" ]]; then
+  arch=aarch64
+  dmg="Seqora_${version}_${arch}.dmg"
+  expected=$(checksum "$dmg")
+fi
+[[ "$expected" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::$release/SHA256SUMS.txt has no entry for a universal or Apple Silicon DMG."; exit 1; }
 
 download=$(mktemp)
 trap 'rm -f "$download"' EXIT
@@ -51,4 +62,5 @@ echo "Updating the cask from $current to $version ($actual)."
   echo "submit=true"
   echo "version=$version"
   echo "sha256=$actual"
+  echo "arch=$arch"
 } >> "$OUTPUT"
