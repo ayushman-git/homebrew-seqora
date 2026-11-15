@@ -1,8 +1,8 @@
 cask "seqora" do
-  version "0.6.1"
-  sha256 "efb311a9af8a5e945c4d260158dbe624dbd19ab9e3d9eeec76038b6f3e736bfb"
+  version "0.6.2"
+  sha256 "16c22575435c14f47678808a9b0dfbf727bee2cc9e2d4b7821e0263a8a8c22da"
 
-  url "https://releases.seqora.dev/releases/#{version}/downloads/Seqora_#{version}_aarch64.dmg"
+  url "https://releases.seqora.dev/releases/#{version}/downloads/Seqora_#{version}_universal.dmg"
   name "Seqora"
   desc "Database client for PostgreSQL, MySQL, MariaDB and SQLite"
   homepage "https://seqora.dev/"
@@ -16,8 +16,7 @@ cask "seqora" do
   end
 
   auto_updates true
-  depends_on arch: :arm64
-  depends_on :macos
+  depends_on macos: :monterey
 
   app "Seqora.app"
 
